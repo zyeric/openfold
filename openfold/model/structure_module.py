@@ -311,11 +311,14 @@ class InvariantPointAttention(nn.Module):
 
         # [*, H, N_res, N_res]
         a = torch.matmul(
-            permute_final_dims(q, (1, 0, 2)),  # [*, H, N_res, C_hidden]
-            permute_final_dims(k, (1, 2, 0)),  # [*, H, C_hidden, N_res]
+            # permute_final_dims(q, (1, 0, 2)),  # [*, H, N_res, C_hidden]
+            # permute_final_dims(k, (1, 2, 0)),  # [*, H, C_hidden, N_res]
+            torch.permute(q, (0, 2, 1, 3)),
+            torch.permute(k, (0, 2, 3, 1)),
         )
         a *= math.sqrt(1.0 / (3 * self.c_hidden))
-        a += (math.sqrt(1.0 / 3) * permute_final_dims(b, (2, 0, 1)))
+        # a += (math.sqrt(1.0 / 3) * permute_final_dims(b, (2, 0, 1)))
+        a += (math.sqrt(1.0 / 3) * torch.permute(b, (0, 3, 1, 2)))
 
         # [*, N_res, N_res, H, P_q, 3]
         pt_att = q_pts.unsqueeze(-4) - k_pts.unsqueeze(-5)
@@ -344,7 +347,8 @@ class InvariantPointAttention(nn.Module):
         square_mask = self.inf * (square_mask - 1)
 
         # [*, H, N_res, N_res]
-        pt_att = permute_final_dims(pt_att, (2, 0, 1))
+        # pt_att = permute_final_dims(pt_att, (2, 0, 1))
+        pt_att = torch.permute(pt_att, (0, 3, 1, 2))
         
         if(inplace_safe):
             a += pt_att
@@ -374,7 +378,8 @@ class InvariantPointAttention(nn.Module):
 
         # [*, H, 3, N_res, P_v] 
         if(inplace_safe):
-            v_pts = permute_final_dims(v_pts, (1, 3, 0, 2))
+            # v_pts = permute_final_dims(v_pts, (1, 3, 0, 2))
+            v_pts = torch.permute(v_pts, (0, 2, 4, 1, 3))
             o_pt = [
                 torch.matmul(a, v.to(a.dtype)) 
                 for v in torch.unbind(v_pts, dim=-3)
@@ -384,13 +389,15 @@ class InvariantPointAttention(nn.Module):
             o_pt = torch.sum(
                 (
                     a[..., None, :, :, None]
-                    * permute_final_dims(v_pts, (1, 3, 0, 2))[..., None, :, :]
+                    # * permute_final_dims(v_pts, (1, 3, 0, 2))[..., None, :, :]
+                    * torch.permute(v_pts, (0, 2, 4, 1, 3))[..., None, :, :]
                 ),
                 dim=-2,
             )
 
         # [*, N_res, H, P_v, 3]
-        o_pt = permute_final_dims(o_pt, (2, 0, 3, 1))
+        # o_pt = permute_final_dims(o_pt, (2, 0, 3, 1))
+        o_pt = torch.permute(o_pt, (0, 3, 1, 4, 2))
         o_pt = r[..., None, None].invert_apply(o_pt)
 
         # [*, N_res, H * P_v]
@@ -682,6 +689,7 @@ class StructureModule(nn.Module):
             s = self.ipa_dropout(s)
             s = self.layer_norm_ipa(s)
             s = self.transition(s)
+            return s
            
             # [*, N]
             rigids = rigids.compose_q_update_vec(self.bb_update(s))
