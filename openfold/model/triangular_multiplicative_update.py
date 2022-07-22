@@ -59,11 +59,15 @@ class TriangleMultiplicativeUpdate(nn.Module):
         _inplace_chunk_size: Optional[int] = None
     ) -> torch.Tensor:
         if(self._outgoing):
-            a = permute_final_dims(a, (2, 0, 1))
-            b = permute_final_dims(b, (2, 1, 0))
+            # a = permute_final_dims(a, (2, 0, 1))
+            # b = permute_final_dims(b, (2, 1, 0))
+            a = a.permute(0, 3, 1, 2)
+            b = b.permute(0, 3, 2, 1)
         else:
-            a = permute_final_dims(a, (2, 1, 0))
-            b = permute_final_dims(b,  (2, 0, 1))
+            # a = permute_final_dims(a, (2, 1, 0))
+            # b = permute_final_dims(b, (2, 0, 1))
+            a = a.permute(0, 3, 2, 1)
+            b = b.permute(0, 3, 1, 2)
 
         if(_inplace_chunk_size is not None):
             # To be replaced by torch vmap
@@ -81,7 +85,8 @@ class TriangleMultiplicativeUpdate(nn.Module):
         else:
             p = torch.matmul(a, b)
 
-        return permute_final_dims(p, (1, 2, 0))
+        # return permute_final_dims(p, (1, 2, 0))
+        return p.permute(0, 2, 3, 1)
 
     def _inference_forward(self,
         z: torch.Tensor,
@@ -166,7 +171,8 @@ class TriangleMultiplicativeUpdate(nn.Module):
             p.sigmoid_()
             p *= linear_p(pair)
             p *= mask
-            p = permute_final_dims(p, (2, 0, 1))
+            # p = permute_final_dims(p, (2, 0, 1))
+            p = p.permute(0, 3, 1, 2)
             return p
 
         def compute_projection(pair, mask, a=True, chunked=True): 

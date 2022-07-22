@@ -117,7 +117,8 @@ class TriangleAttention(nn.Module):
         mask_bias = (self.inf * (mask - 1))[..., :, None, None, :]
 
         # [*, H, I, J]
-        triangle_bias = permute_final_dims(self.linear(x), (2, 0, 1))
+        # triangle_bias = permute_final_dims(self.linear(x), (2, 0, 1))
+        triangle_bias = torch.permute(self.linear(x), (0, 3, 1, 2))
 
         # [*, 1, H, I, J]
         triangle_bias = triangle_bias.unsqueeze(-4)
